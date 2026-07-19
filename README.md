@@ -30,7 +30,6 @@
   - [`strain_abundance.txt`](#strain_abundancetxt)
   - [`tax_profile_strain.tre`](#tax_profile_straintre)
 - [Temporary files and local scratch space](#temporary-files-and-local-scratch-space)
-- [Citation](#citation)
 - [License](#license)
 
 ---
@@ -457,23 +456,6 @@ Using a local scratch filesystem such as `/tmp` can reduce I/O overhead on netwo
 
 ---
 
-## Citation
-
-PanTax-DBG is currently distributed as versioned research software. If you use it in published work, please cite the software release:
-
-```bibtex
-@software{xu_pantax_dbg_2026,
-  title   = {PanTax-DBG: species- and strain-level profiling for paired-end short-read metagenomes},
-  author  = {Xu, Jialu},
-  year    = {2026},
-  month   = {6},
-  version = {0.1.0},
-  url     = {https://github.com/xujialupaoli/PanTax-DBG/releases/tag/v0.1.0},
-  license = {GPL-3.0-or-later}
-}
-```
-
-GitHub also provides APA and BibTeX formats through the **Cite this repository** link. A manuscript citation will be added after publication.
 
 ---
 
