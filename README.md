@@ -6,7 +6,7 @@
 
 **PanTax-DBG** is a metagenomic profiler for estimating **species-level** and **strain-level** relative abundance from **paired-end short-read sequencing data**. It combines high-recall taxonomic candidate screening with colored compacted de Bruijn graph (ccDBG) refinement, enabling profiling across low- to high-abundance microbial signals.
 
-> **Current public input type:** paired-end short reads (`-r read1.fq[.gz] -r read2.fq[.gz]`).
+
 
 ---
 
@@ -184,6 +184,7 @@ example/pantaxdbg_DB/pantaxdbg_db.tax
 For a large reference collection, database construction may require substantially more time and computational resources than this small tutorial.
 
 ### 2. Profile paired-end reads
+> **Current public input type:** paired-end short reads (`-r read1.fq[.gz] -r read2.fq[.gz]`).
 
 Materialize the example genome paths for the current checkout:
 
