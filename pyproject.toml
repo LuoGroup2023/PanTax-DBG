@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pantax-dbg"
-version = "0.1.1"
+version = "0.1.2"
 description = "Species- and strain-level metagenomic profiling with ccDBG refinement"
 readme = "README.md"
 requires-python = ">=3.9"

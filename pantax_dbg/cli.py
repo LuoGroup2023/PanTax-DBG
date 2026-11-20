@@ -133,7 +133,7 @@ def subcmd_profile(args):
         r1_min_abundance=args.r1_min_abundance,
         species_min_abundance=args.species_min_abundance,
         species_min_reads=args.species_min_reads,
-        ggcat_temp_dir=args.ggcat_temp_dir,
+        ggcat_temp_dir=args.temp_dir,
         ggcat_memory=None,
         ggcat_prefer_memory=False,
         ggcat_disk_optimization_level=None,
@@ -238,8 +238,7 @@ def build_parser():
         default=0.0,
         metavar="FLOAT",
         help=(
-            "After dynamic filtering, retain species with assigned-read counts\n"
-            "strictly greater than this value. (default: 0.0)"
+            "Retain species with a read count above this threshold. (default: 0.0)"
         ),
     )
 
@@ -309,13 +308,16 @@ def build_parser():
 
     technical = profile_parser.add_argument_group("technical arguments")
     technical.add_argument(
-        "--ggcat-temp-dir",
+        "--temp-dir",
         default=None,
         metavar="DIR",
         help=(
-            "Directory for DBG-ggcat temporary build files. By default, a\n"
+            "Directory for temporary build files. By default, a\n"
             "run-specific directory is created under $TMPDIR or /tmp."
         ),
+    )
+    technical.add_argument(
+        "--ggcat-temp-dir", dest="temp_dir", help=argparse.SUPPRESS
     )
     return parser
 
