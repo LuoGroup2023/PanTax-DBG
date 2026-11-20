@@ -204,7 +204,7 @@ pantax-dbg profile \
     --strain-topk 5 \
     --strain-div 5.0 \
     --r1-large-n 100 \
-    --r1-topk-large 7 \
+    --r1-topk-large 10 \
     --r1-min-abundance 1e-7 \
     --ref-info example/example_profile_genome_info.local.txt \
     --output example/profile_res \
@@ -227,7 +227,7 @@ Key options in this example:
 | `--strain-topk` | `5` | Maximum number of retained strain groups per species after ranking. |
 | `--strain-div` | `5.0` | Divisor used in the secondary strain-support filtering step. |
 | `--r1-large-n` | `100` | Candidate-set size above which large-set candidate filtering is applied. |
-| `--r1-topk-large` | `7` | Number of strain candidates retained per species in large-set mode. |
+| `--r1-topk-large` | `10` | Number of strain candidates retained per species in large-set mode. |
 | `--r1-min-abundance` | `1e-7` | Minimum first-stage species relative abundance retained for graph refinement. |
 
 The principal abundance outputs are:
@@ -250,7 +250,7 @@ pantax-dbg profile \
     --strain-topk 5 \
     --strain-div 5.0 \
     --r1-large-n 100 \
-    --r1-topk-large 7 \
+    --r1-topk-large 10 \
     --r1-min-abundance 1e-7 \
     --ref-info /path/to/example_profile_genome_info.txt \
     --output /path/to/sample_profile_res \

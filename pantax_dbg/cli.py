@@ -288,11 +288,11 @@ def build_parser():
     candidates.add_argument(
         "--r1-topk-large",
         type=int,
-        default=7,
+        default=10,
         metavar="INT",
         help=(
             "Number of strain candidates retained per species in large-set\n"
-            "filtering mode. (default: 7)"
+            "filtering mode. (default: 10)"
         ),
     )
     candidates.add_argument(
