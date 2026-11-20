@@ -61,7 +61,7 @@ class PairedProfileFilterTests(unittest.TestCase):
     def assert_empty_profiles(self):
         self.assertEqual((self.out / "species_abundance.txt").read_text(), "speciesID\tabundance\n")
         self.assertEqual((self.out / "strain_abundance.txt").read_text(), "strain_taxid\tstrain_name\tabundance\n")
-        self.assertEqual((self.out / "tax_profile.tre").read_text(), "")
+        self.assertFalse((self.out / "tax_profile.tre").exists())
         self.assertEqual((self.out / "tax_profile_strain.tre").read_text(), "")
 
     def test_low_dynamic_threshold_clears_profiles(self):
@@ -80,8 +80,9 @@ class PairedProfileFilterTests(unittest.TestCase):
             (self.out / "strain_abundance.txt").read_text(),
             "strain_taxid\tstrain_name\tabundance\n101\ts1\t1.0000000000\n",
         )
-        tree = (self.out / "tax_profile.tre").read_text().splitlines()
-        self.assertEqual([line.split("\t")[1] for line in tree], ["1", "10"])
+        self.assertFalse((self.out / "tax_profile.tre").exists())
+        tree = (self.out / "tax_profile_strain.tre").read_text().splitlines()
+        self.assertEqual([line.split("\t")[1] for line in tree], ["1", "10", "101"])
         self.assertTrue(all(len(line.split("\t")) == 9 for line in tree))
 
     def test_no_reportable_strains_overwrites_previous_positive_profiles(self):
