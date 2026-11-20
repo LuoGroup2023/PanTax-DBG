@@ -69,8 +69,8 @@ important arguments:
 advanced arguments:
   -p , --max-fp         Max. false positive for bloom filters. Mutually exclusive --filter-size. Defaults to 0.001 with
                         --filter-type hibf or 0.05 with --filter-type ibf. (default: None)
-  -k , --kmer-size      The k-mer size to split sequences. (default: 19)
-  -w , --window-size    The window-size to build filter with minimizers. (default: 31)
+  -k , --kmer-size      The k-mer size to split sequences. (default: 31)
+  -w , --window-size    The window-size to build filter with minimizers. (default: 51)
   -s , --hash-functions 
                         The number of hash functions for the interleaved bloom filter [1-5]. With --filter-type ibf, 0
                         will try to set optimal value. (default: 4)
@@ -105,7 +105,7 @@ def subcmd_build_custom(argv):
     if any(a in ("-h", "--help") for a in argv):
         print(BUILD_CUSTOM_HELP)
         sys.exit(0)
-    cmd = [_ganon(), "build-custom"] + list(argv)
+    cmd = [_ganon(), "build-custom", "-k", "31", "-w", "51", *argv]
     run_cmd(cmd, echo=False)
 
 
@@ -278,31 +278,31 @@ def build_parser():
     candidates.add_argument(
         "--r1-large-n",
         type=int,
-        default=1000,
+        default=100,
         metavar="INT",
         help=(
             "Candidate-set size above which large-set top-k filtering is\n"
-            "applied. (default: 1000)"
+            "applied. (default: 100)"
         ),
     )
     candidates.add_argument(
         "--r1-topk-large",
         type=int,
-        default=3,
+        default=7,
         metavar="INT",
         help=(
             "Number of strain candidates retained per species in large-set\n"
-            "filtering mode. (default: 3)"
+            "filtering mode. (default: 7)"
         ),
     )
     candidates.add_argument(
         "--r1-min-abundance",
         type=float,
-        default=0.0,
+        default=1e-7,
         metavar="FLOAT",
         help=(
             "Minimum first-round species abundance retained for DBG\n"
-            "refinement. (default: 0.0)"
+            "refinement. (default: 1e-7)"
         ),
     )
 

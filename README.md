@@ -204,7 +204,7 @@ pantax-dbg profile \
     --strain-topk 5 \
     --strain-div 5.0 \
     --r1-large-n 100 \
-    --r1-topk-large 10 \
+    --r1-topk-large 7 \
     --r1-min-abundance 1e-7 \
     --ref-info example/example_profile_genome_info.local.txt \
     --output example/profile_res \
@@ -227,7 +227,7 @@ Key options in this example:
 | `--strain-topk` | `5` | Maximum number of retained strain groups per species after ranking. |
 | `--strain-div` | `5.0` | Divisor used in the secondary strain-support filtering step. |
 | `--r1-large-n` | `100` | Candidate-set size above which large-set candidate filtering is applied. |
-| `--r1-topk-large` | `10` | Number of strain candidates retained per species in large-set mode. |
+| `--r1-topk-large` | `7` | Number of strain candidates retained per species in large-set mode. |
 | `--r1-min-abundance` | `1e-7` | Minimum first-stage species relative abundance retained for graph refinement. |
 
 The principal abundance outputs are:
@@ -250,7 +250,7 @@ pantax-dbg profile \
     --strain-topk 5 \
     --strain-div 5.0 \
     --r1-large-n 100 \
-    --r1-topk-large 10 \
+    --r1-topk-large 7 \
     --r1-min-abundance 1e-7 \
     --ref-info /path/to/example_profile_genome_info.txt \
     --output /path/to/sample_profile_res \
@@ -367,7 +367,7 @@ Example:
 
 The species and strain abundance tables report relative-abundance proportions on a 0-1 scale. The final column of the optional strain-resolved tree uses the same scale.
 
-PanTax-DBG reports a possible negative sample when the dynamic read-count threshold is below `1e-4` or the final strain profile has no reportable rows. Such runs write `species_abundance.txt` and `strain_abundance.txt` with their standard headers and zero data rows. The corresponding taxonomic tree files are empty.
+PanTax-DBG reports a possible negative sample when the dynamic read-count threshold is below `1e-4` or the final strain profile has no reportable rows. Such runs write `species_abundance.txt` and `strain_abundance.txt` with their standard headers and zero data rows. The strain-level taxonomic tree file is empty.
 
 ### `species_abundance.txt`
 

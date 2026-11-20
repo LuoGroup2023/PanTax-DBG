@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
 import subprocess
 from pathlib import Path
 import math
@@ -104,8 +105,7 @@ def _write_empty_paired_profiles(out_prefix, reason):
     species_profile = out_prefix / "species_abundance.txt"
     species_profile.write_text(_SPECIES_HEADER, encoding="utf-8")
     (out_prefix / "strain_abundance.txt").write_text(_STRAIN_HEADER, encoding="utf-8")
-    for name in ("tax_profile.tre", "tax_profile_strain.tre"):
-        (out_prefix / name).write_text("", encoding="utf-8")
+    (out_prefix / "tax_profile_strain.tre").write_text("", encoding="utf-8")
     print(f"[PanTax-DBG] Possible negative sample: {reason}. Wrote empty abundance profiles.")
     return str(species_profile)
 
@@ -126,9 +126,9 @@ def run(
     strain_min_reads=5.0,
     strain_topk=5,
     strain_div=5.0,
-    r1_large_n=1000,
-    r1_topk_large=3,
-    r1_min_abundance=0.0,
+    r1_large_n=100,
+    r1_topk_large=7,
+    r1_min_abundance=1e-7,
     species_min_abundance=0.0,
     ggcat_temp_dir=None,
     ggcat_memory=None,
@@ -198,9 +198,9 @@ def run_paired(reads, db_prefix, out_prefix,
                strain_min_reads=5.0,
                strain_topk=5,
                strain_div=5.0,
-               r1_large_n=1000,
-               r1_topk_large=3,
-               r1_min_abundance=0.0,
+               r1_large_n=100,
+               r1_topk_large=7,
+               r1_min_abundance=1e-7,
                species_min_abundance=0.0,
                ggcat_temp_dir=None,
                ggcat_memory=None,
@@ -432,17 +432,9 @@ def _finalize_paired_profiles(
 
     final_abundance = out_prefix / "species_abundance.txt"
     final_strain_abundance = out_prefix / "strain_abundance.txt"
-    final_species_tre = out_prefix / "tax_profile.tre"
     final_strain_tre = out_prefix / "tax_profile_strain.tre"
     shutil.copyfile(species_profile, final_abundance)
     shutil.copyfile(strain_profile, final_strain_abundance)
-    _ts("tax_profile_rebuild").rebuild_tax_profile_with_species_abundance(
-        tax_profile=tre_file,
-        species_abundance=final_abundance,
-        out_path=final_species_tre,
-        drop_root=False,
-        preserve_read_counts=True,
-    )
     _ts("tax_profile_strain_update").run(
         tax_profile=tre_file,
         strain_abundance=final_strain_abundance,
@@ -451,7 +443,6 @@ def _finalize_paired_profiles(
 
     print("[PanTax-DBG] Paired-end profiling completed.")
     print(f"  - Species profile: {final_abundance}")
-    print(f"  - Species tree:    {final_species_tre}")
     print(f"  - Strain profile:  {final_strain_abundance}")
     print(f"  - Strain tree:     {final_strain_tre}")
 
@@ -621,19 +612,13 @@ def _count_non_empty_lines(path):
     return c
 
 def _prepare_ggcat_reads_paired(r1, r2, out_fastq, threads=8):
-    # Write QC reports to the final output directory rather than the current
-    # shell working directory.
-    final_output_dir = Path(out_fastq).parent.parent
-    fastp_html = final_output_dir / "fastp.html"
-    fastp_json = final_output_dir / "fastp.json"
-
     cmd = [
         "fastp",
         "-i", r1,
         "-I", r2,
         "--thread", str(threads),
-        "--html", str(fastp_html),
-        "--json", str(fastp_json),
+        "--html", os.devnull,
+        "--json", os.devnull,
         "--stdout",
     ]
     with open(out_fastq, "w") as out_f:

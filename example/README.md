@@ -67,7 +67,7 @@ pantax-dbg profile \
     --strain-topk 5 \
     --strain-div 5.0 \
     --r1-large-n 100 \
-    --r1-topk-large 10 \
+    --r1-topk-large 7 \
     --r1-min-abundance 1e-7 \
     --ref-info example/example_profile_genome_info.local.txt \
     --output example/profile_res \
