@@ -13,6 +13,11 @@ from .utils import ensure_dir
 from . import ganon_wrapper, ggcat_wrapper, fast_ganon
 
 
+_NEGATIVE_SAMPLE_THRESHOLD = 1e-4
+_SPECIES_HEADER = "speciesID\tabundance\n"
+_STRAIN_HEADER = "strain_taxid\tstrain_name\tabundance\n"
+
+
 def _ts(mod: str):
     return importlib.import_module(f"pantax_dbg_scripts.{mod}")
 
@@ -41,7 +46,7 @@ def _filter_and_renormalize_abundance(input_path, output_path, min_val):
         
     if not lines:
         with open(output_path, "w", encoding="utf-8") as fout:
-            fout.write("speciesID\tabundance\n")
+            fout.write(_SPECIES_HEADER)
         return
 
     for line in lines:
@@ -64,7 +69,7 @@ def _filter_and_renormalize_abundance(input_path, output_path, min_val):
         norm_factor = 0.0
 
     with open(output_path, "w", encoding="utf-8") as fout:
-        fout.write("speciesID\tabundance\n")
+        fout.write(_SPECIES_HEADER)
         items.sort(key=lambda x: x[1], reverse=True)
         for sid, val in items:
             new_val = val * norm_factor
@@ -95,6 +100,16 @@ def _count_non_empty_lines_skip_header(path):
     return count
 
 
+def _write_empty_paired_profiles(out_prefix, reason):
+    species_profile = out_prefix / "species_abundance.txt"
+    species_profile.write_text(_SPECIES_HEADER, encoding="utf-8")
+    (out_prefix / "strain_abundance.txt").write_text(_STRAIN_HEADER, encoding="utf-8")
+    for name in ("tax_profile.tre", "tax_profile_strain.tre"):
+        (out_prefix / name).write_text("", encoding="utf-8")
+    print(f"[PanTax-DBG] Possible negative sample: {reason}. Wrote empty abundance profiles.")
+    return str(species_profile)
+
+
 # ==============================================================================
 # Main Logic
 # ==============================================================================
@@ -120,6 +135,7 @@ def run(
     ggcat_prefer_memory=False,
     ggcat_disk_optimization_level=None,
     ggcat_intermediate_compression_level=None,
+    species_min_reads=0.0,
 ):
     # Public PanTax-DBG release: paired-end short-read workflow only.
     # Internal single-read code paths are intentionally not exposed in this release.
@@ -165,6 +181,7 @@ def run(
             r1_topk_large=r1_topk_large,
             r1_min_abundance=r1_min_abundance,
             species_min_abundance=species_min_abundance,
+            species_min_reads=species_min_reads,
             ggcat_temp_dir=ggcat_temp_dir,
             ggcat_memory=ggcat_memory,
             ggcat_prefer_memory=ggcat_prefer_memory,
@@ -190,11 +207,14 @@ def run_paired(reads, db_prefix, out_prefix,
                ggcat_prefer_memory=False,
                ggcat_disk_optimization_level=None,
                ggcat_intermediate_compression_level=None,
+               species_min_reads=0.0,
 ):
     if len(reads) != 2:
         raise SystemExit("[PanTax-DBG] Paired-end mode requires two -r reads (R1 and R2).")
     if not ref_info:
         raise SystemExit("[PanTax-DBG] --ref-info is required.")
+    if not math.isfinite(species_min_reads) or species_min_reads < 0:
+        raise SystemExit("[PanTax-DBG] --species-min-reads must be finite and non-negative.")
 
     r1, r2 = map(str, reads)
 
@@ -274,12 +294,9 @@ def run_paired(reads, db_prefix, out_prefix,
         )
         shutil.copyfile(sel_tsv, tmp_id_table)
     else:
-        print("[PanTax-DBG] Warning: No species remained after filtering. Writing an empty final species profile.")
-        final_abundance = out_prefix / "species_abundance.txt"
-        with open(final_abundance, "w") as f:
-            f.write("speciesID\tabundance\n")
+        final_abundance = _write_empty_paired_profiles(out_prefix, "no species candidates remained after screening")
         _cleanup_intermediate_dirs(work_ganon, work_db, work_q, out_prefix / ".temp_files")
-        return str(final_abundance)
+        return final_abundance
 
     # Build the mapping from graph colors to candidate genomes.
     color_map = work_db / "color_mapping.in"
@@ -334,57 +351,58 @@ def run_paired(reads, db_prefix, out_prefix,
             single=False,
         )
 
-    # 8) Mix predictions
-    temp_mix_abundance = out_prefix / "species_abundance.raw_mix.txt"
-    
-    _run_threshold_and_mix_for_paired(
+    final_abundance = _finalize_paired_profiles(
+        out_prefix=out_prefix,
+        work_q=work_q,
         ggcat_prefix=str(ggcat_prefix),
         tmp_id_table=str(tmp_id_table),
         ganon_predict_spy=str(ganon_predict_spy),
         tre_file=str(ganon_tre),
         reads_path=str(ggcat_reads),
-        output=str(temp_mix_abundance),
+        species_min_reads=species_min_reads,
+        species_min_abundance=species_min_abundance,
         strain_min_reads=strain_min_reads,
         strain_topk=strain_topk,
         strain_div=strain_div,
     )
+    _cleanup_intermediate_dirs(work_ganon, work_db, work_q, out_prefix / ".temp_files")
+    return final_abundance
 
-    # =========================================================
-    # [FILTER 2] Final Result Filtering & Renormalization
-    # =========================================================
-    
-    final_abundance = out_prefix / "species_abundance.txt"
 
+def _finalize_paired_profiles(
+    *, out_prefix, work_q, ggcat_prefix, tmp_id_table, ganon_predict_spy, tre_file,
+    reads_path, species_min_reads, species_min_abundance, strain_min_reads, strain_topk, strain_div,
+):
+    temp_mix_abundance = work_q / "species_abundance.raw_mix.txt"
+    threshold = _run_threshold_and_mix_for_paired(
+        ggcat_prefix=ggcat_prefix,
+        tmp_id_table=tmp_id_table,
+        ganon_predict_spy=ganon_predict_spy,
+        tre_file=tre_file,
+        reads_path=reads_path,
+        output=temp_mix_abundance,
+        species_min_reads=species_min_reads,
+    )
+    if threshold < _NEGATIVE_SAMPLE_THRESHOLD:
+        return _write_empty_paired_profiles(
+            out_prefix, f"dynamic threshold {threshold} is below {_NEGATIVE_SAMPLE_THRESHOLD:g}"
+        )
+
+    species_profile = work_q / "species_abundance.txt"
     _filter_and_renormalize_abundance(
-        input_path=str(temp_mix_abundance), 
-        output_path=str(final_abundance), 
-        min_val=species_min_abundance
+        input_path=temp_mix_abundance,
+        output_path=species_profile,
+        min_val=species_min_abundance,
     )
-    
-    # 9) Rebuild Tax Profile
-    _ts("tax_profile_rebuild").rebuild_tax_profile_with_species_abundance(
-        tax_profile=str(ganon_tre),
-        species_abundance=str(final_abundance),
-        out_path=None,          
-        drop_root=True,
-        drop_strain=True,
-    )
-    _ts("tax_profile_rebuild").add_header_to_species_abundance(
-        species_abundance=str(final_abundance),
-        header1="Species_TaxID",
-        header2="Relative_Abundance",
-    )
+    if not _count_non_empty_lines_skip_header(species_profile):
+        return _write_empty_paired_profiles(out_prefix, "no species passed final filtering")
 
-    # =========================================================
-    # Strain Level Logic
-    # =========================================================
-    
     strain_group = f"{ggcat_prefix}.strain_group_abundance.tsv"
     strain_with_id = f"{ggcat_prefix}.strain_group_abundance.with_taxid_name.tsv"
 
     _ts("add_strain_taxid_and_name_columns").run(
         input=strain_group,
-        map=str(tmp_id_table),  
+        map=tmp_id_table,
         out=strain_with_id,
     )
 
@@ -398,74 +416,38 @@ def run_paired(reads, db_prefix, out_prefix,
         keep_ties=True,
     )
 
-    # Threshold calculation logic...
-    species_counts = f"{ggcat_prefix}.species_counts.tsv"
-    try:
-        remains = 0.0; sc = 0
-        if Path(species_counts).exists():
-            with open(species_counts, "r") as f:
-                for line in f:
-                    if line.strip():
-                        parts = line.split("\t")
-                        if len(parts)>=2: remains += float(parts[1]); sc += 1
-        
-        total_reads = 1
-        if Path(str(ggcat_reads)).exists():
-            with open(str(ggcat_reads), "r") as rf:
-                total_lines = sum(1 for _ in rf)
-            total_reads = max(total_lines // 4, 1)
-        
-        ratio = remains / total_reads
-        expr = (remains / 1_000_000.0) * (ratio ** 2) * (remains / sc) if sc > 0 else 0
-        threshold = math.sqrt(expr) if expr > 0 else 0.0
-    except Exception:
-        threshold = 0.0
-
-    strain_out_prefix = f"{ggcat_prefix}.predict.strain"
-
-    _ts("strain_postprocess_global_abundance").run(
-        mix=str(final_abundance), 
+    _, strain_profile = _ts("strain_postprocess_global_abundance").run(
+        mix=str(species_profile),
         input=strain_topk_file,
         threshold=threshold,
         div=strain_div,
-        out_prefix=strain_out_prefix,
+        out_prefix=f"{ggcat_prefix}.predict.strain",
         emit_name=True,
     )
+    with open(strain_profile, encoding="utf-8") as handle:
+        next(handle, None)
+        has_strains = any(line.strip() for line in handle)
+    if not has_strains:
+        return _write_empty_paired_profiles(out_prefix, "no strains passed final filtering")
 
-
-# =========================================================
-    # Final Output Organization (Species vs. Strain)
-    # =========================================================
-    
-    # 1. 
-    raw_strain_abundance = Path(f"{strain_out_prefix}.abundance.tsv")
+    final_abundance = out_prefix / "species_abundance.txt"
     final_strain_abundance = out_prefix / "strain_abundance.txt"
-    final_strain_tre = out_prefix / "tax_profile_strain.tre"
-    
-    # 2. 
-    if raw_strain_abundance.exists():
-        shutil.copyfile(raw_strain_abundance, final_strain_abundance)
-        
-        # 3. 
-        
-        
-        _ts("tax_profile_strain_update").run(
-            tax_profile=str(ganon_tre),
-            strain_abundance=str(final_strain_abundance),
-            output_tre=str(final_strain_tre)
-        )
-    else:
-        print("[PanTax-DBG] Warning: No strain abundance generated.")
-
-    Path(temp_mix_abundance).unlink(missing_ok=True)
-
-    # Copy the final species-level tree from the first-stage taxonomic report.
     final_species_tre = out_prefix / "tax_profile.tre"
-    if ganon_tre.exists():
-        shutil.copyfile(ganon_tre, final_species_tre)
-
-    # Keep only user-facing final outputs after a successful paired-end run.
-    _cleanup_intermediate_dirs(work_ganon, work_db, work_q, out_prefix / ".temp_files")
+    final_strain_tre = out_prefix / "tax_profile_strain.tre"
+    shutil.copyfile(species_profile, final_abundance)
+    shutil.copyfile(strain_profile, final_strain_abundance)
+    _ts("tax_profile_rebuild").rebuild_tax_profile_with_species_abundance(
+        tax_profile=tre_file,
+        species_abundance=final_abundance,
+        out_path=final_species_tre,
+        drop_root=False,
+        preserve_read_counts=True,
+    )
+    _ts("tax_profile_strain_update").run(
+        tax_profile=tre_file,
+        strain_abundance=final_strain_abundance,
+        output_tre=final_strain_tre,
+    )
 
     print("[PanTax-DBG] Paired-end profiling completed.")
     print(f"  - Species profile: {final_abundance}")
@@ -684,59 +666,36 @@ def _run_threshold_and_mix_for_paired(
     tre_file,
     reads_path,
     output,
-    strain_min_reads=5.0,
-    strain_topk=5,
-    strain_div=5.0,
+    species_min_reads=0.0,
 ):
     species_counts = f"{ggcat_prefix}.species_counts.tsv"
-
-    remains = 0.0
-    species = 0
-    with open(species_counts, "r", encoding="utf-8") as f:
-        for line in f:
-            if not line.strip():
-                continue
-            parts = line.rstrip("\n").split("\t")
-            if len(parts) < 2:
-                continue
-            try:
-                v = float(parts[1])
-            except ValueError:
-                continue
-            remains += v
-            species += 1
+    length_correction = _ts("length_corrected_abundance")
+    counts = length_correction.read_counts(species_counts)
+    if not counts:
+        return 0.0
 
     with open(reads_path, "r", encoding="utf-8") as rf:
         total_lines = sum(1 for _ in rf)
     total_reads = max(total_lines // 4, 1)
 
-    if species == 0:
-        print("[PanTax-DBG] No species in ggcat species_counts.tsv (paired).")
-        with open(output, "w") as f: f.write("speciesID\tabundance\n")
-        return
+    assigned_reads = sum(counts.values())
+    threshold = (assigned_reads ** 2) / (1_000 * total_reads * math.sqrt(len(counts)))
+    if threshold < _NEGATIVE_SAMPLE_THRESHOLD:
+        return threshold
 
-    ratio = remains / total_reads
-    expr = (remains / 1_000_000.0) * (ratio ** 2) * (remains / species)
-    threshold = math.sqrt(expr) if expr > 0 else 0.0
+    min_reads = max(threshold, species_min_reads)
+    retained_counts = {species: reads for species, reads in counts.items() if reads > min_reads}
+    if not retained_counts:
+        Path(output).write_text(_SPECIES_HEADER, encoding="utf-8")
+        return threshold
 
     filtered_counts = f"{ggcat_prefix}.species_counts_more{threshold:.6g}.tsv"
-    with open(species_counts, "r", encoding="utf-8", errors="ignore") as fin, \
-         open(filtered_counts, "w", encoding="utf-8") as fout:
-        for line in fin:
-            if not line.strip():
-                continue
-            parts = line.rstrip("\n").split("\t")
-            if len(parts) < 2:
-                continue
-            try:
-                v = float(parts[1])
-            except ValueError:
-                continue
-            if v > threshold:
-                fout.write(line)
+    with open(filtered_counts, "w", encoding="utf-8") as fout:
+        for species, reads in retained_counts.items():
+            fout.write(f"{species}\t{reads}\n")
 
     abund_more = f"{ggcat_prefix}.species_abundance_more{threshold:.6g}.tsv"
-    _ts("length_corrected_abundance").run(
+    length_correction.run(
         counts_file=filtered_counts,
         mapping_file=tmp_id_table,
         output_file=abund_more,
@@ -820,8 +779,9 @@ def _run_threshold_and_mix_for_paired(
 
     with open(final_tmp, 'r', encoding='utf-8') as fin, \
         open(output, 'w', encoding='utf-8') as fout:
-        fout.write("speciesID\tabundance\n")
+        fout.write(_SPECIES_HEADER)
         shutil.copyfileobj(fin, fout)
+    return threshold
 
 def _run_threshold_and_lc_for_single(
     ggcat_prefix,

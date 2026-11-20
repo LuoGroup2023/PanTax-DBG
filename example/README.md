@@ -71,6 +71,7 @@ pantax-dbg profile \
     --r1-min-abundance 1e-7 \
     --ref-info example/example_profile_genome_info.local.txt \
     --output example/profile_res \
+    --species-min-reads 0.0 \
     --species-min-abundance 0.0 \
     --threads 16 \
     -k 31

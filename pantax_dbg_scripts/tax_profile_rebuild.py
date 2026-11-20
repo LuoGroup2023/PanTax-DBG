@@ -48,6 +48,7 @@ def rebuild_tax_profile_with_species_abundance(
     drop_root: bool = True,
     drop_strain: bool = True,
     zero_eps: float = 1e-10,
+    preserve_read_counts: bool = False,
 ) -> str:
     """
     Rebuild a filtered ganon tax_profile.tre using final species abundance.
@@ -58,6 +59,7 @@ def rebuild_tax_profile_with_species_abundance(
 
     Abundances at higher ranks are obtained by summing retained descendant
     species, and zero-abundance branches are omitted.
+    Set preserve_read_counts to retain the read-count columns of a ganon report.
     """
     tax_profile = Path(tax_profile)
     species_abundance = Path(species_abundance)
@@ -120,13 +122,12 @@ def rebuild_tax_profile_with_species_abundance(
             if abs(abundance) < zero_eps:
                 continue
 
-            # keep first 4 columns
-            if len(parts) >= 4:
-                first_four = parts[:4]
+            if preserve_read_counts and len(parts) >= 9:
+                fields = parts[:8]
             else:
-                first_four = parts + [""] * (4 - len(parts))
+                fields = parts[:4] + [""] * max(0, 4 - len(parts))
 
-            f_out.write("\t".join(first_four) + "\t" + str(abundance) + "\n")
+            f_out.write("\t".join(fields) + "\t" + str(abundance) + "\n")
 
     return str(out_path)
 

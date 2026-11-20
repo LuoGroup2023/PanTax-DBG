@@ -1,8 +1,8 @@
 # PanTax-DBG: species- and strain-level profiling for paired-end short-read metagenomes
 
-[![GitHub release](https://img.shields.io/github/v/release/xujialupaoli/PanTax-DBG)](https://github.com/xujialupaoli/PanTax-DBG/releases)
+[![GitHub release](https://img.shields.io/github/v/release/LuoGroup2023/PanTax-DBG)](https://github.com/LuoGroup2023/PanTax-DBG/releases)
 [![Bioconda](https://img.shields.io/conda/vn/bioconda/pantax-dbg.svg)](https://anaconda.org/bioconda/pantax-dbg)
-[![License](https://img.shields.io/github/license/xujialupaoli/PanTax-DBG)](LICENSE)
+[![License](https://img.shields.io/github/license/LuoGroup2023/PanTax-DBG)](LICENSE)
 
 **PanTax-DBG** is a metagenomic profiler for estimating **species-level** and **strain-level** relative abundance from **paired-end short-read sequencing data**. It combines high-recall taxonomic candidate screening with colored compacted de Bruijn graph (ccDBG) refinement, enabling profiling across low- to high-abundance microbial signals.
 
@@ -38,7 +38,7 @@
 
 ### Install with Conda
 
-PanTax-DBG 0.1.0 is available from Bioconda for Linux. Install it with `conda-forge` ahead of `bioconda` under strict channel priority:
+PanTax-DBG is available from Bioconda for Linux. Install it with `conda-forge` ahead of `bioconda` under strict channel priority:
 
 ```bash
 conda create -n pantaxdbg_env pantax-dbg \
@@ -60,7 +60,7 @@ The Conda package provides the PanTax-DBG command-line interface and all require
 Use this route when you want the latest repository code rather than only the released Conda package. First complete the Conda installation above and keep the environment activated. Then run:
 
 ```bash
-git clone https://github.com/xujialupaoli/PanTax-DBG.git
+git clone https://github.com/LuoGroup2023/PanTax-DBG.git
 cd PanTax-DBG
 python -m pip install --no-deps .
 pantax-dbg -h
@@ -222,6 +222,7 @@ Key options in this example:
 | `--output` | `example/profile_res` | Output directory for abundance profiles and intermediate reports. |
 | `--threads` | `16` | Number of worker threads. |
 | `-k`, `--kmer-size` | `31` | k-mer size used in the ccDBG-based profiling step. |
+| `--species-min-reads` | `0.0` | After dynamic filtering, retain species whose GGCAT assigned-read count is strictly greater than this value. |
 | `--strain-min-reads` | `5.0` | Minimum assigned-read support required before strain-group ranking. |
 | `--strain-topk` | `5` | Maximum number of retained strain groups per species after ranking. |
 | `--strain-div` | `5.0` | Divisor used in the secondary strain-support filtering step. |
@@ -253,6 +254,7 @@ pantax-dbg profile \
     --r1-min-abundance 1e-7 \
     --ref-info /path/to/example_profile_genome_info.txt \
     --output /path/to/sample_profile_res \
+    --species-min-reads 0.0 \
     --species-min-abundance 0.0 \
     --threads 64 \
     -k 31 \
@@ -364,6 +366,8 @@ Example:
 ## Output files
 
 The species and strain abundance tables report relative-abundance proportions on a 0-1 scale. The final column of the optional strain-resolved tree uses the same scale.
+
+PanTax-DBG reports a possible negative sample when the dynamic read-count threshold is below `1e-4` or the final strain profile has no reportable rows. Such runs write `species_abundance.txt` and `strain_abundance.txt` with their standard headers and zero data rows. The corresponding taxonomic tree files are empty.
 
 ### `species_abundance.txt`
 

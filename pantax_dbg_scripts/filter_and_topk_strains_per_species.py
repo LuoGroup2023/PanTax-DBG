@@ -67,6 +67,8 @@ def run(
         if missing:
             raise RuntimeError(f"[Error] Missing required columns: {sorted(missing)}")
 
+        input_fields = list(reader.fieldnames)
+
         for row in reader:
             if to_float(row["assigned_reads"]) <= float(min_reads):
                 continue
@@ -81,14 +83,11 @@ def run(
             score = to_float(row["rel_abundance_within_species"])
             groups[species].append((score, row))
 
-    # if not groups:
-    #     raise SystemExit("[Error] No rows left after filtering")
-    #20260518add
     if not groups:
         with open(out, "wt", newline="") as fo:
-            fo.write("species\tgroup_id\tassigned_reads\trel_abundance_within_species\tstrains\n")
-        print("[Warning] No rows left after filtering; wrote empty strain table.")
-        return out    
+            csv.DictWriter(fo, fieldnames=input_fields, delimiter=delim).writeheader()
+        print("[Info] No strain groups passed filtering; wrote a header-only strain table.")
+        return out
 
     with open(out, "wt", newline="") as fo:
         writer = None

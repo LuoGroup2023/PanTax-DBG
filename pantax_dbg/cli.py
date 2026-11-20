@@ -132,6 +132,7 @@ def subcmd_profile(args):
         r1_topk_large=args.r1_topk_large,
         r1_min_abundance=args.r1_min_abundance,
         species_min_abundance=args.species_min_abundance,
+        species_min_reads=args.species_min_reads,
         ggcat_temp_dir=args.ggcat_temp_dir,
         ggcat_memory=None,
         ggcat_prefer_memory=False,
@@ -229,6 +230,16 @@ def build_parser():
         help=(
             "Minimum relative abundance retained in the final species profile;\n"
             "retained abundances are renormalized. (default: 0.0)"
+        ),
+    )
+    profiling.add_argument(
+        "--species-min-reads",
+        type=float,
+        default=0.0,
+        metavar="FLOAT",
+        help=(
+            "After dynamic filtering, retain species with assigned-read counts\n"
+            "strictly greater than this value. (default: 0.0)"
         ),
     )
 
