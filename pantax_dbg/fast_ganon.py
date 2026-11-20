@@ -86,15 +86,16 @@ def run_paired_prehit(
     predict_spy = query_dir / "predict_spy.ID.abundance"
     predict_ids = query_dir / "predict_spy_number.ID"
     tax_profile = query_dir / "tax_profile.tre"
+    outputs = {
+        "tax_profile": str(tax_profile),
+        "species_abundance": str(species_abundance),
+        "strain_abundance": str(strain_abundance),
+        "predict_spy": str(predict_spy),
+    }
 
     if (not force) and _required_outputs_exist(query_dir):
         print("[PanTax-DBG] Found existing fast DBG-ganon outputs; skipping pre-screening.")
-        return {
-            "tax_profile": str(tax_profile),
-            "species_abundance": str(species_abundance),
-            "strain_abundance": str(strain_abundance),
-            "predict_spy": str(predict_spy),
-        }
+        return outputs
 
     ganon_classify = get_internal_binary("ganon-classify")
     ganon_frontend = get_dbg_ganon()
@@ -131,11 +132,21 @@ def run_paired_prehit(
             run_cmd(cmd, "[PanTax-DBG][DBG-ganon classify]", echo=True, silence=False)
         except Exception as e:
             last_error = e
+            continue
 
-        if species_all.exists() and species_all.stat().st_size > 0:
+        if species_all.is_file():
             break
+        last_error = FileNotFoundError(f"DBG-ganon did not write {species_all.name}")
     else:
         raise RuntimeError(f"[PanTax-DBG][error] DBG-ganon classify failed after {MAX_RETRIES} attempts: {last_error}")
+
+    if species_all.stat().st_size == 0:
+        for path in (tax_profile, species_abundance, strain_abundance, predict_spy, predict_ids):
+            path.write_text("", encoding="utf-8")
+        if not keep_species_all:
+            species_all.unlink()
+        print("[PanTax-DBG] DBG-ganon found no species matches.")
+        return outputs
 
     if expected_topk.exists():
         species_topk_tsv = expected_topk
@@ -184,9 +195,4 @@ def run_paired_prehit(
         species_all.unlink(missing_ok=True)
 
     print("[PanTax-DBG] fast DBG-ganon pre-screening finished.")
-    return {
-        "tax_profile": str(tax_profile),
-        "species_abundance": str(species_abundance),
-        "strain_abundance": str(strain_abundance),
-        "predict_spy": str(predict_spy),
-    }
+    return outputs

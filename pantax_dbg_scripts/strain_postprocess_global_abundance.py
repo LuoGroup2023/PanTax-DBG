@@ -97,7 +97,7 @@ def run(
     """
     sp2ab = read_mix_species_abundance(mix)
     if not sp2ab:
-        raise SystemExit("[Error] mix file produced no species abundances.")
+        print("[Info] No retained species; the strain profile will be empty.")
 
     cutoff = float(threshold) / float(div)
 
@@ -108,8 +108,15 @@ def run(
 
         need = {"species", "assigned_reads", "rel_abundance_within_species", "strains", "strain_taxid", "strain_name"}
         missing = need.difference(set(reader.fieldnames))
+        input_fields = list(reader.fieldnames)
         if missing:
-            raise SystemExit(f"[Error] input missing columns: {sorted(missing)}")
+            # Older empty top-K outputs lost the appended identity columns.
+            # Accept that precise header-only case, not malformed data rows.
+            if missing <= {"strain_taxid", "strain_name"} and next(reader, None) is None:
+                input_fields.extend(sorted(missing))
+                print("[Info] Accepted a legacy header-only strain table.")
+            else:
+                raise SystemExit(f"[Error] input missing columns: {sorted(missing)}")
 
         kept: List[dict] = []
         by_sp: Dict[str, List[dict]] = defaultdict(list)
@@ -144,7 +151,21 @@ def run(
             by_sp[sp].append(row)
 
     if not kept:
-        raise SystemExit("[Error] No rows left after filtering. Try lowering cutoff or check inputs.")
+        out_with_global = f"{out_prefix}.with_global.tsv"
+        out_abund = f"{out_prefix}.abundance.tsv"
+        fieldnames = list(input_fields)
+        for column in ("rel_within_species_renorm", "global_abundance"):
+            if column not in fieldnames:
+                fieldnames.append(column)
+        with open(out_with_global, "wt", encoding="utf-8", newline="") as fo:
+            csv.DictWriter(fo, fieldnames=fieldnames, delimiter=delim).writeheader()
+        with open(out_abund, "wt", encoding="utf-8", newline="") as fa:
+            if emit_name:
+                fa.write("strain_taxid\tstrain_name\tabundance\n")
+            else:
+                fa.write("strain_taxid\tabundance\n")
+        print("[Info] No reportable strains; wrote header-only strain outputs.")
+        return out_with_global, out_abund
 
     # per-species sum(rel)
     sp_sum: Dict[str, float] = {}
