@@ -222,7 +222,7 @@ Key options in this example:
 | `--output` | `example/profile_res` | Output directory for abundance profiles and intermediate reports. |
 | `--threads` | `16` | Number of worker threads. |
 | `-k`, `--kmer-size` | `31` | k-mer size used in the ccDBG-based profiling step. |
-| `--species-min-reads` | `0.0` | After dynamic filtering, retain species whose GGCAT assigned-read count is strictly greater than this value. |
+| `--species-min-reads` | `0.0` | Retain species with a read count above this threshold. |
 | `--strain-min-reads` | `5.0` | Minimum assigned-read support required before strain-group ranking. |
 | `--strain-topk` | `5` | Maximum number of retained strain groups per species after ranking. |
 | `--strain-div` | `5.0` | Divisor used in the secondary strain-support filtering step. |
@@ -442,7 +442,7 @@ For downstream abundance analyses, use `species_abundance.txt` or `strain_abunda
 
 ## Temporary files and local scratch space
 
-During graph refinement, PanTax-DBG may create temporary intermediate files. Use `--ggcat-temp-dir` to direct temporary graph-building files to local scratch storage:
+During graph refinement, PanTax-DBG may create temporary intermediate files. Use `--temp-dir` to direct temporary graph-building files to local scratch storage:
 
 ```bash
 pantax-dbg profile \
@@ -451,7 +451,7 @@ pantax-dbg profile \
     --db-prefix /path/to/pantaxdbg_db \
     --ref-info /path/to/example_profile_genome_info.txt \
     --output /path/to/profile_res \
-    --ggcat-temp-dir /tmp/pantax_dbg_${USER}_$$ \
+    --temp-dir /tmp/pantax_dbg_${USER}_$$ \
     --threads 64 \
     -k 31
 ```

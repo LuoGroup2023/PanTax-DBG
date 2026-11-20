@@ -40,7 +40,7 @@ def run_build(
     during benchmarks and large cohort profiling.
 
     User-facing option:
-      --ggcat-temp-dir <DIR>
+      --temp-dir <DIR>
 
     Advanced resource knobs are intentionally kept internal for now:
       memory, prefer_memory, disk_optimization_level, intermediate_compression_level
