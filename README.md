@@ -53,7 +53,7 @@ export PATH="$CONDA_PREFIX/libexec/pantax-dbg:$PATH"
 pantax-dbg -h
 ```
 
-The Conda package provides the PanTax-DBG command-line interface and all required runtime components. The commands above activate the environment and verify the installation.
+The Conda package provides the PanTax-DBG command-line interface and its runtime dependencies. After activating the environment, run the `export PATH` line before `pantax-dbg build-custom` so it can locate the bundled database builder. You can run `pantax-dbg -h` immediately after activation.
 
 ### Install the current GitHub revision
 
